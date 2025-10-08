@@ -21,7 +21,7 @@ export const generateGeminiResponse = async (req, res) => {
     );
 
     const data = await response.json();
-    console.log(data);  
+    // console.log(data);  
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
     return res.json({ output: text });

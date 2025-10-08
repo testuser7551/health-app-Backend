@@ -16,7 +16,9 @@ connectDB();
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
-
+app.get("/", (req, res) => {
+  res.send("Welcome to 4Youngevity Health App");
+});
 //public routes
 app.use("/api/auth",authRoutes);
 

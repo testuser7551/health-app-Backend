@@ -6,7 +6,7 @@ import { generateToken, getUserDetails } from "../helpers/JwtHelper.js";
 export const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-
+        console.log(name, email, password );
         if (!name || !email || !password) {
             return res.status(400).json({ message: "Please provide all required fields" });
         }
@@ -45,6 +45,7 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log( email, password );
 
         if (!email || !password) {
             return res.status(400).json({ message: "Please provide email and password" });

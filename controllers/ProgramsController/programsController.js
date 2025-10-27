@@ -3,7 +3,7 @@ import Program from "../../models/Program.js"; // path from controller
 import UserProgramTrack from "../../models/UserProgramTrack.js";
 import UserDayTrack from "../../models/UserDayTrack.js";
 
-// Fetch the All Programs
+
 export const getAllPrograms = async (req, res) => {
   try {
     const programs = await Program.find().sort({ createdAt: -1 }); // latest first
@@ -14,7 +14,7 @@ export const getAllPrograms = async (req, res) => {
   }
 };
 
-// User Enroll the Program
+
 export const enrollUserToProgram = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -55,7 +55,7 @@ export const enrollUserToProgram = async (req, res) => {
   }
 };
 
-// Post the User Day activity Completion
+
 export const trackUserDay = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -93,13 +93,13 @@ export const trackUserDay = async (req, res) => {
       message: `User progress tracked for day ${day}`,
       track: newDayTrack,
     });
-  } catch (err) {
+  } catch (err) { 
     console.error("Track User Day Error:", err.message);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
-// Fetch the User Current Program Details
+
 export const getProgramProgress = async (req, res) => {
   try {
     const userId = req.user._id;

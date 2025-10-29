@@ -5,6 +5,9 @@ import PulseRate from "../../models/6normals/PulseRate.js";  // Correct the path
 import RespiratoryRate from "../../models/6normals/RespiratoryRate.js";
 import SpO2 from "../../models/6normals/spo2.js";
 import StepCount from "../../models/6normals/StepCount.js"; 
+import Vaccine from "../../models/6normals/Vaccine.js";
+import FullBodyCheckup from "../../models/6normals/FullBodyCheckup.js"; // adjust the path if needed
+ 
 export const addBloodPressureReading = async (req, res) => {
     try {
         const userId = req.user?._id || req.body.userId;
@@ -536,10 +539,290 @@ export const getStepCounts = async (req, res) => {
 
 
 
+export const getLatestHealthData = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    // Fetch the latest blood pressure reading
+    const userBP = await BloodPressure.findOne({ userId });
+    const latestBP = userBP && userBP.readings.length > 0
+      ? userBP.readings[userBP.readings.length - 1]
+      : null;
+
+    // Fetch the latest body temperature reading
+    const userTemp = await BodyTemperature.findOne({ userId });
+    const latestTemp = userTemp && userTemp.readings.length > 0
+      ? userTemp.readings[userTemp.readings.length - 1]
+      : null;
+
+    // Fetch the latest pulse rate reading
+    const userPulse = await PulseRate.findOne({ userId });
+    const latestPulse = userPulse && userPulse.readings.length > 0
+      ? userPulse.readings[userPulse.readings.length - 1]
+      : null;
+
+    // Fetch the latest respiratory rate reading
+    const userRespiratoryRate = await RespiratoryRate.findOne({ userId });
+    const latestRespiratoryRate = userRespiratoryRate && userRespiratoryRate.readings.length > 0
+      ? userRespiratoryRate.readings[userRespiratoryRate.readings.length - 1]
+      : null;
+
+    // Fetch step counts
+    const stepCounts = await StepCount.find({ userId });
+    
+    // Fetch the latest SpO2 reading
+    const userSpO2 = await SpO2.findOne({ userId });
+    const latestSpO2 = userSpO2 && userSpO2.readings.length > 0
+      ? userSpO2.readings[userSpO2.readings.length - 1]
+      : null;
+
+    // Prepare response data
+    const responseData = {
+      bloodPressure: latestBP ? {
+        ...latestBP.toObject(),
+        measurementTime: latestBP.measurementTime.toLocaleString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+      } : null,
+      
+      bodyTemperature: latestTemp ? {
+        ...latestTemp.toObject(),
+        measurementTime: latestTemp.measurementTime.toISOString()
+      } : null,
+
+      pulseRate: latestPulse || null,
+      
+      respiratoryRate: latestRespiratoryRate || null,
+
+      stepCounts: stepCounts.length > 0 ? stepCounts : null,
+
+      spO2: latestSpO2 || null
+    };
+
+    res.status(200).json({
+      message: "Latest health data fetched successfully",
+      data: responseData
+    });
+
+  } catch (err) {
+    console.error("Get Latest Health Data Error:", err.message);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message
+    });
+  }
+};
 
 
 
+export const addVaccineReading = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.body.userId;
+    const { vaccineStatus, lastCheckDate, measurementTime, notes } = req.body;
 
+    if (!userId || !vaccineStatus) {
+      return res
+        .status(400)
+        .json({ message: "userId and vaccineStatus are required" });
+    }
+
+    // 🕒 Convert measurementTime to Date
+    let parsedMeasurementTime;
+    if (measurementTime?.includes("T")) {
+      parsedMeasurementTime = new Date(measurementTime); // ISO format
+    } else if (measurementTime) {
+      const [datePart, timePart] = measurementTime.split(", ");
+      const [day, month, year] = datePart.split("/");
+      const [hours, minutes] = timePart.split(":");
+      parsedMeasurementTime = new Date(year, month - 1, day, hours, minutes);
+    } else {
+      parsedMeasurementTime = new Date();
+    }
+
+    const newReading = {
+      vaccineStatus,
+      lastCheckDate: lastCheckDate || "",
+      measurementTime: parsedMeasurementTime,
+      notes: notes || "",
+    };
+
+    // 🔍 Check if user already has vaccine record
+    let userVaccine = await Vaccine.findOne({ userId });
+
+    if (userVaccine) {
+      userVaccine.readings.push(newReading);
+      await userVaccine.save();
+      return res.status(200).json({
+        status: "success",
+        message: "Vaccine record added successfully",
+        data: userVaccine,
+      });
+    } else {
+      const newRecord = new Vaccine({
+        userId,
+        readings: [newReading],
+      });
+      await newRecord.save();
+      return res.status(201).json({
+        status: "success",
+        message: "New vaccine record created",
+        data: newRecord,
+      });
+    }
+  } catch (err) {
+    console.error("Add Vaccine Error:", err.message);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+
+// ✅ Get latest vaccine reading
+export const getLatestVaccineReading = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    const userVaccine = await Vaccine.findOne({ userId });
+
+    if (!userVaccine || userVaccine.readings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No vaccine readings found", data: null });
+    }
+
+    const latestReading = userVaccine.readings[userVaccine.readings.length - 1];
+
+    const formattedReading = {
+      ...latestReading.toObject(),
+      measurementTime: latestReading.measurementTime.toISOString(),
+    };
+
+    res.status(200).json({
+      message: "Latest vaccine record fetched successfully",
+      data: formattedReading,
+    });
+  } catch (err) {
+    console.error("Get Latest Vaccine Error:", err.message);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+
+export const addFullBodyCheckupReading = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.body.userId;
+    const { lastCheckupDate, measurementTime, notes } = req.body;
+
+    if (!userId || !lastCheckupDate) {
+      return res
+        .status(400)
+        .json({ message: "userId and lastCheckupDate are required" });
+    }
+
+    // 🕒 Convert measurementTime to Date
+    let parsedMeasurementTime;
+    if (measurementTime?.includes("T")) {
+      parsedMeasurementTime = new Date(measurementTime); // ISO format
+    } else if (measurementTime) {
+      const [datePart, timePart] = measurementTime.split(", ");
+      const [day, month, year] = datePart.split("/");
+      const [hours, minutes] = timePart.split(":");
+      parsedMeasurementTime = new Date(year, month - 1, day, hours, minutes);
+    } else {
+      parsedMeasurementTime = new Date();
+    }
+
+    const newReading = {
+      lastCheckupDate,
+      measurementTime: parsedMeasurementTime,
+      notes: notes || "",
+    };
+
+    // 🔍 Check if user already has a FullBodyCheckup record
+    let userCheckup = await FullBodyCheckup.findOne({ userId });
+
+    if (userCheckup) {
+      userCheckup.readings.push(newReading);
+      await userCheckup.save();
+      return res.status(200).json({
+        status: "success",
+        message: "Full Body Checkup reading added successfully",
+        data: userCheckup,
+      });
+    } else {
+      const newRecord = new FullBodyCheckup({
+        userId,
+        readings: [newReading],
+      });
+      await newRecord.save();
+      return res.status(201).json({
+        status: "success",
+        message: "New Full Body Checkup record created",
+        data: newRecord,
+      });
+    }
+  } catch (err) {
+    console.error("Add Full Body Checkup Error:", err.message);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+
+// ✅ Get latest Full Body Checkup reading
+export const getLatestFullBodyCheckupReading = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.params.userId;
+
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
+    }
+
+    const userCheckup = await FullBodyCheckup.findOne({ userId });
+
+    if (!userCheckup || userCheckup.readings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No Full Body Checkup readings found", data: null });
+    }
+
+    const latestReading =
+      userCheckup.readings[userCheckup.readings.length - 1];
+
+    const formattedReading = {
+      ...latestReading.toObject(),
+      measurementTime: latestReading.measurementTime.toISOString(),
+    };
+
+    res.status(200).json({
+      message: "Latest Full Body Checkup reading fetched successfully",
+      data: formattedReading,
+    });
+  } catch (err) {
+    console.error("Get Latest Full Body Checkup Error:", err.message);
+    res.status(500).json({
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
 
 
 

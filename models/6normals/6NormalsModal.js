@@ -134,6 +134,51 @@ const TobaccoFreeSchema = new mongoose.Schema({
   notes: String,
 }, readingOptions);
 
+
+/* --------------------- 💉 VACCINES --------------------- */
+const VaccinesSchema = new mongoose.Schema({
+  vaccineStatus: {
+    type: String,
+    enum: ["UpToDate", "NeedToUpdate"],
+    required: true,
+  },
+  lastCheckDate: {
+    type: Date,
+    required: true,
+  },
+  measurementTime: {
+    type: Date,
+    default: Date.now,
+  },
+  notes: {
+    type: String,
+    maxlength: 200,
+  },
+}, readingOptions);
+
+/* --------------------- 🧍 FULL BODY CHECKUP --------------------- */
+const FullBodyCheckupSchema = new mongoose.Schema({
+  status: {
+    type: String,
+    enum: ["Completed", "Pending"],
+    required: true,
+  },
+  lastCheckupDate: {
+    type: Date,
+    required: true,
+  },
+  measurementTime: {
+    type: Date,
+    default: Date.now,
+  },
+  notes: {
+    type: String,
+    maxlength: 200,
+  },
+}, readingOptions);
+
+
+
 /* --------------------- 🧾 MASTER HEALTH RECORD --------------------- */
 const HealthRecordSchema = new mongoose.Schema(
   {
@@ -150,6 +195,8 @@ const HealthRecordSchema = new mongoose.Schema(
     healthyWeight: [HealthyWeightSchema],
     stressManagement: [StressManagementSchema],
     tobaccoFree: [TobaccoFreeSchema],
+    vaccines: [VaccinesSchema],
+    fullBodyCheckup: [FullBodyCheckupSchema],
   },
   { timestamps: true }
 );

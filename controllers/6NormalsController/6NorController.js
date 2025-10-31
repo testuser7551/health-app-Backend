@@ -41,7 +41,7 @@ import HealthRecord from "../../models/6normals/6NormalsModal.js";
 export const addHealthRecord = async (req, res) => {
   try {
     const userId = req.user?._id || req.body.userId;
-    const {  type, ...data } = req.body;
+    const { type, ...data } = req.body;
 
     if (!userId || !type) {
       return res.status(400).json({ message: "Missing required fields: userId or type." });
@@ -57,6 +57,8 @@ export const addHealthRecord = async (req, res) => {
       HealthyWeight: "healthyWeight",
       StressManagement: "stressManagement",
       TobaccoFree: "tobaccoFree",
+      Vaccines: "vaccines",
+      FullBodyCheckup: "fullBodyCheckup",
     };
 
     const fieldName = fieldMap[type];
@@ -180,6 +182,45 @@ export const addHealthRecord = async (req, res) => {
         }
         break;
       }
+      case "Vaccines": {
+        const { vaccineStatus, lastCheckDate, measurementTime, notes } = data;
+        const validStatuses = ["Up to Date", "Need to Update"];
+
+        if (!vaccineStatus || !validStatuses.includes(vaccineStatus)) {
+          isValid = false;
+          validationError = "Vaccine status must be one of: Up to Date, Due, Overdue, Not Started.";
+        } else if (!lastCheckDate || isNaN(Date.parse(lastCheckDate))) {
+          isValid = false;
+          validationError = "Last check date is required and must be valid.";
+        } else if (measurementTime && new Date(measurementTime) > new Date()) {
+          isValid = false;
+          validationError = "Measurement time cannot be in the future.";
+        } else if (notes && notes.trim().length < 3) {
+          isValid = false;
+          validationError = "Notes must be at least 3 characters if provided.";
+        }
+        break;
+      }
+
+      case "FullBodyCheckup": {
+        const { status, lastCheckupDate, measurementTime, notes } = data;
+        const validStatuses = ["Completed", "Pending"];
+
+        if (!status || !validStatuses.includes(status)) {
+          isValid = false;
+          validationError = "Status must be one of: Completed, Pending, Scheduled, Missed.";
+        } else if (!lastCheckupDate || isNaN(Date.parse(lastCheckupDate))) {
+          isValid = false;
+          validationError = "Last checkup date is required and must be valid.";
+        } else if (measurementTime && new Date(measurementTime) > new Date()) {
+          isValid = false;
+          validationError = "Measurement time cannot be in the future.";
+        } else if (notes && notes.trim().length < 3) {
+          isValid = false;
+          validationError = "Notes must be at least 3 characters if provided.";
+        }
+        break;
+      }
 
       default:
         isValid = false;
@@ -208,6 +249,7 @@ export const addHealthRecord = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 /* ---------------------- UPDATE READING ---------------------- */
 export const updateHealthRecord = async (req, res) => {
@@ -274,8 +316,8 @@ export const getAllHealthRecords = async (req, res) => {
 /* ---------------------- GET LATEST RECORDS ---------------------- */
 export const getLatestHealthRecords = async (req, res) => {
   try {
-    const { userId } = req.params;
-
+   const userId = req.user?._id || req.params;
+    // console.log(userId);
     const record = await HealthRecord.findOne({ userId });
 
     if (!record) {
@@ -296,6 +338,8 @@ export const getLatestHealthRecords = async (req, res) => {
       healthyWeight: getLatest(record.healthyWeight),
       stressManagement: getLatest(record.stressManagement),
       tobaccoFree: getLatest(record.tobaccoFree),
+      vaccines: getLatest(record.vaccines),
+      fullBodyCheckup: getLatest(record.fullBodyCheckup),
     };
 
     return res.status(200).json({
